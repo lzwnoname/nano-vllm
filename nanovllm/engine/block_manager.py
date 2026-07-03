@@ -61,14 +61,14 @@ class BlockManager:
         num_new_blocks = seq.num_blocks
         for i in range(seq.num_blocks - 1):
             token_ids = seq.block(i)
-            h = self.compute_hash(token_ids, h)
+            h = self.compute_hash(token_ids, h) # 根据所有前缀token计算hash值来匹配相同的前缀
             block_id = self.hash_to_block_id.get(h, -1)
-            if block_id == -1 or self.blocks[block_id].token_ids != token_ids:
+            if block_id == -1 or self.blocks[block_id].token_ids != token_ids: # 兜底判断防止blocks内容被篡改
                 break
             num_cached_blocks += 1
             if block_id in self.used_block_ids:
                 num_new_blocks -= 1
-        if len(self.free_block_ids) < num_new_blocks:
+        if len(self.free_block_ids) < num_new_blocks: # 没有办法分配足够的block数
             return -1
         return num_cached_blocks
 

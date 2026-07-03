@@ -25,7 +25,8 @@ class Scheduler:
     def schedule(self) -> tuple[list[Sequence], bool]:
         scheduled_seqs = []
         num_batched_tokens = 0
-
+        
+        # prefil优先，如果没有prefill请求再处理decode请求
         # prefill
         while self.waiting and len(scheduled_seqs) < self.max_num_seqs:
             seq = self.waiting[0]
@@ -33,7 +34,7 @@ class Scheduler:
             if remaining == 0:
                 break
             if not seq.block_table:
-                num_cached_blocks = self.block_manager.can_allocate(seq)
+                num_cached_blocks = self.block_manager.can_allocate(seq) # 计算共享前缀的kv cache个数并判断是否能分配足够的block数量
                 if num_cached_blocks == -1:
                     break
                 num_tokens = seq.num_tokens - num_cached_blocks * self.block_size
