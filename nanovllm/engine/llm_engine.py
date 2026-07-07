@@ -10,6 +10,7 @@ from nanovllm.sampling_params import SamplingParams
 from nanovllm.engine.sequence import Sequence
 from nanovllm.engine.scheduler import Scheduler
 from nanovllm.engine.model_runner import ModelRunner
+from nanovllm.utils.profiler import nvtx_range
 
 
 class LLMEngine:
@@ -47,10 +48,13 @@ class LLMEngine:
         self.scheduler.add(seq)
 
     def step(self):
-        seqs, is_prefill = self.scheduler.schedule()
+        with nvtx_range("schedule"):
+            seqs, is_prefill = self.scheduler.schedule()
         num_tokens = sum(seq.num_scheduled_tokens for seq in seqs) if is_prefill else -len(seqs)
-        token_ids = self.model_runner.call("run", seqs, is_prefill)
-        self.scheduler.postprocess(seqs, token_ids, is_prefill)
+        with nvtx_range("model_run"):
+            token_ids = self.model_runner.call("run", seqs, is_prefill)
+        with nvtx_range("postprocess"):
+            self.scheduler.postprocess(seqs, token_ids, is_prefill)
         outputs = [(seq.seq_id, seq.completion_token_ids) for seq in seqs if seq.is_finished]
         return outputs, num_tokens
 

@@ -3,6 +3,7 @@ from collections import deque
 from nanovllm.config import Config
 from nanovllm.engine.sequence import Sequence, SequenceStatus
 from nanovllm.engine.block_manager import BlockManager
+from nanovllm.utils.profiler import nvtx_range
 
 
 class Scheduler:
@@ -80,8 +81,10 @@ class Scheduler:
         self.waiting.appendleft(seq)
 
     def postprocess(self, seqs: list[Sequence], token_ids: list[int], is_prefill: bool):
+        with nvtx_range("hash_blocks"):
+            for seq in seqs:
+                self.block_manager.hash_blocks(seq)
         for seq, token_id in zip(seqs, token_ids):
-            self.block_manager.hash_blocks(seq)
             seq.num_cached_tokens += seq.num_scheduled_tokens
             seq.num_scheduled_tokens = 0
             if is_prefill and seq.num_cached_tokens < seq.num_tokens:
